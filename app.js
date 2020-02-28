@@ -40,7 +40,7 @@ const http = {
 
 const newsService = (() => {
   const apiKey = '1fb3ba10e4c441648767da4841a18740';
-  const apiURL = 'http://newsapi.org/v2';
+  const apiURL = 'https://newsapi.org/v2';
 
   return {
     getTopHeadLines(country = "ru") {
