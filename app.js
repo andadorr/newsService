@@ -6,7 +6,7 @@ const http = {
       xhr.responseType = 'json'
       xhr.setRequestHeader('Content-Type', "application/json")
       xhr.onload = () => {
-        if (xhr.status >=400) {
+        if (xhr.status >= 400) {
           reject(xhr.response)
         } else {
           resolve(xhr.response)
@@ -24,7 +24,7 @@ const http = {
       xhr.open("GET", url)
       xhr.responseType = 'json'
       xhr.onload = () => {
-        if (xhr.status >=400) {
+        if (xhr.status >= 400) {
           reject(xhr.response)
         } else {
           resolve(xhr.response)
@@ -44,7 +44,7 @@ const newsService = (() => {
 
   return {
     getTopHeadLines(country = "ru") {
-      return http.GET(`${apiURL}/top-headlines?country=${country}&apiKey=${apiKey}`)
+      return http.GET(`${apiURL}/top-headlines?country=${country}&category=technology&apiKey=${apiKey}`)
     },
     getEveryThing(query) {
       return http.GET(`${apiURL}/everything?q=${query}&apiKey=${apiKey}`)
@@ -52,6 +52,16 @@ const newsService = (() => {
   }
 })();
 
+// Elements
+const form = document.forms['newsControls'];
+const countrySelect = form.elements['country'];
+const searchInput = form.elements['search'];
+
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  loadNews();
+})
 // init selects and load start newses
 document.addEventListener('DOMContentLoaded', function() {
   M.AutoInit();
@@ -59,16 +69,45 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadNews() {
-  newsService.getTopHeadLines('ru')
-  .then((newsData) => {
-    console.log(newsData);
-    renderNews(newsData.articles);
-  });
+  const country = countrySelect.value;
+  const searchText = searchInput.value;
+
+  if (!searchText) {
+    showLoader();
+    newsService.getTopHeadLines(country)
+      .then((newsData) => {
+        if (!newsData.articles.length) {
+          throw new Error({error: 'no news was found'});
+        }
+        removePreloader();
+        renderNews(newsData.articles);
+      })
+      .catch((error) => {
+        showAlert(JSON.stringify(error), 'error-msg');
+      });
+  } else {
+    newsService.getEveryThing(searchText)
+      .then((newsData) => {
+        if (!newsData.articles.length) {
+          throw new Error({error: 'no news was found'});
+        }
+        removePreloader();
+        renderNews(newsData.articles);
+      })
+      .catch((error) => {
+        showAlert(JSON.stringify(error), 'error-msg');
+      });
+  }
 }
+
+
 
 // Function render
 function renderNews(news) {
   const newsContainer = document.querySelector('.news-container .row');
+  if (newsContainer.children.length) {
+    clearContainer(newsContainer);
+  }
   let fragment = '';
   news.forEach(newsItem => {
     const el = newsTemplate(newsItem);
@@ -76,6 +115,14 @@ function renderNews(news) {
   });
 
   newsContainer.insertAdjacentHTML('afterbegin', fragment);
+}
+
+function clearContainer(container) {
+  let child = container.lastElementChild;
+  while(child) {
+    container.removeChild(child);
+    child = container.lastElementChild;
+  }
 }
 
 // News item template function
@@ -95,4 +142,24 @@ function newsTemplate({ urlToImage, title, url, description }) {
       </div>
     </div>
   </div>`
+}
+
+function showAlert(msg, type) {
+  M.toast({ html: msg, classes: type});
+}
+
+// show loader funciton 
+function showLoader() {
+  const inner = `<div class="progress">
+  <div class="indeterminate"></div>
+</div>`;
+  document.body.insertAdjacentHTML('afterbegin', inner);
+}
+
+// remove loader 
+function removePreloader() {
+  const loader = document.querySelector('.progress');
+  if (loader) {
+    loader.remove();
+  }
 }
